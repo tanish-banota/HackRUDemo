@@ -1,0 +1,18 @@
+{
+  "name": "time-until-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "check": "node --check src/server.js && node --check src/app.js && node --check src/db.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nanoid": "^5.0.9",
+    "pg": "^8.13.1"
+  }
+}
