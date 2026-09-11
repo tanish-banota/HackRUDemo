@@ -5,8 +5,15 @@ import { pool } from './db.js';
 
 const createId = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
 const app = express();
+const configuredOrigins = process.env.CORS_ORIGIN?.split(',').map((origin) => origin.trim()) || [];
 
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',').map((origin) => origin.trim()) || true }));
+app.use(cors({
+  origin: (requestOrigin, callback) => {
+    const isVercelOrigin = requestOrigin?.endsWith('.vercel.app');
+    const isAllowed = !requestOrigin || configuredOrigins.includes('*') || configuredOrigins.includes(requestOrigin) || isVercelOrigin;
+    callback(null, isAllowed);
+  }
+}));
 app.use(express.json());
 
 function serializeCountdown(row) {
