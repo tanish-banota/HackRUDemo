@@ -1,6 +1,7 @@
 services:
   - type: web
     name: time-until-api
+    plan: free
     runtime: docker
     rootDir: .
     dockerfilePath: ./backend/Dockerfile
@@ -19,5 +20,6 @@ services:
 
 databases:
   - name: time-until-db
+    plan: free
     databaseName: countdowns
     user: countdowns
