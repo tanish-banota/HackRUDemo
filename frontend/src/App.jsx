@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const defaultApiUrl = import.meta.env.PROD ? 'https://time-until-api.onrender.com' : 'http://localhost:4000';
 const API_URL = (import.meta.env.VITE_API_URL || defaultApiUrl).replace(/\/$/, '');
@@ -33,8 +33,59 @@ function useCountdown(targetDate) {
   };
 }
 
+function CelebrationExperience({ accent }) {
+  const audioRef = useRef(null);
+  const [started, setStarted] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [giftImageVisible, setGiftImageVisible] = useState(false);
+
+  async function toggleSound() {
+    if (!audioRef.current) return;
+    if (started) {
+      audioRef.current.pause();
+      setStarted(false);
+      return;
+    }
+
+    try {
+      await audioRef.current.play();
+      setStarted(true);
+    } catch {
+      setStarted(false);
+    }
+  }
+
+  return (
+    <section className="celebration-experience" style={{ '--accent': accent || DEFAULT_ACCENT }} aria-label="Celebration controls">
+      <div className="orbit orbit-one" aria-hidden="true" />
+      <div className="orbit orbit-two" aria-hidden="true" />
+      <div className="spark-field" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} style={{ '--spark': index }} />)}</div>
+      <audio ref={audioRef} loop preload="auto" src="/audio/celebration.mp3" />
+      <div className="celebration-controls">
+        <button className={`sound-button${started ? ' is-playing' : ''}`} type="button" onClick={toggleSound} aria-pressed={started}>
+          <span className="sound-icon" aria-hidden="true">{started ? 'Ⅱ' : '▶'}</span>
+          {started ? 'Music on' : 'Start the celebration'}
+        </button>
+      </div>
+      <button className={`gift${giftOpen ? ' is-open' : ''}`} type="button" onClick={() => setGiftOpen((open) => !open)} aria-expanded={giftOpen} aria-label={giftOpen ? 'Close your surprise' : 'Open your surprise'}>
+        <span className="gift-lid"><i /></span>
+        <span className="gift-box"><i /></span>
+        <span className="gift-bow" aria-hidden="true"><i /><i /></span>
+        <span className="gift-label">{giftOpen ? 'Close' : 'Open me'}</span>
+      </button>
+      <div className={`gift-reveal${giftOpen ? ' is-visible' : ''}`} aria-hidden={!giftOpen}>
+        <span className="reveal-kicker">A little something</span>
+        <strong>You made it<br />to this moment.</strong>
+        <img className={`gift-image${giftImageVisible ? ' is-visible' : ''}`} src="/gifts/image.png" alt="" onLoad={() => setGiftImageVisible(true)} onError={() => setGiftImageVisible(false)} />
+        <span className="reveal-sparkle" aria-hidden="true">✦</span>
+      </div>
+    </section>
+  );
+}
+
 function CountdownClock({ targetDate, accent }) {
   const time = useCountdown(targetDate);
+  const confetti = Array.from({ length: 28 }, (_, index) => index);
   const values = [
     ['days', time.days],
     ['hours', time.hours],
@@ -43,16 +94,20 @@ function CountdownClock({ targetDate, accent }) {
   ];
 
   return (
-    <div className="clock" style={{ '--accent': accent || DEFAULT_ACCENT }}>
+    <div className={`clock${time.complete ? ' is-complete' : ''}`} style={{ '--accent': accent || DEFAULT_ACCENT }}>
       <div className="clock-status">{time.complete ? 'The moment is here' : 'Counting down live'}</div>
+      {time.complete && <div className="celebration" aria-hidden="true">{confetti.map((piece) => <i key={piece} style={{ '--piece': piece }} />)}</div>}
       <div className="clock-grid">
-        {values.map(([label, value]) => (
+        {time.complete ? (
+          <div className="now-reveal"><strong>NOW</strong><span>It is time</span></div>
+        ) : values.map(([label, value]) => (
           <div className="clock-unit" key={label}>
             <strong>{String(value).padStart(2, '0')}</strong>
             <span>{label}</span>
           </div>
         ))}
       </div>
+      {time.complete && <CelebrationExperience accent={accent} />}
     </div>
   );
 }
