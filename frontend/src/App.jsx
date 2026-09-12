@@ -57,16 +57,22 @@ function CountdownClock({ targetDate, accent }) {
   );
 }
 
-function Header() {
+function Header({ theme, onToggleTheme }) {
   return (
     <header className="site-header">
       <a className="wordmark" href="/">TIME <span>UNTIL</span></a>
-      <span className="header-note">A small clock for big moments</span>
+      <div className="header-tools">
+        <span className="header-note">A small clock for big moments</span>
+        <button className="theme-toggle" type="button" onClick={onToggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>
+          <span aria-hidden="true">{theme === 'light' ? '☾' : '☀'}</span>
+          <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
+        </button>
+      </div>
     </header>
   );
 }
 
-function CreatePage() {
+function CreatePage({ theme, onToggleTheme }) {
   const initialDate = useMemo(() => formatTargetForInput(new Date(Date.now() + 7 * 86_400_000)), []);
   const [form, setForm] = useState({ title: '', targetDate: initialDate, themeAccent: DEFAULT_ACCENT });
   const [error, setError] = useState('');
@@ -102,7 +108,7 @@ function CreatePage() {
 
   return (
     <>
-      <Header />
+      <Header theme={theme} onToggleTheme={onToggleTheme} />
       <main className="landing-shell">
         <section className="intro-panel">
           <p className="eyebrow">Make the wait visible</p>
@@ -136,7 +142,7 @@ function CreatePage() {
   );
 }
 
-function SharePage({ id }) {
+function SharePage({ id, theme, onToggleTheme }) {
   const [countdown, setCountdown] = useState(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -158,13 +164,13 @@ function SharePage({ id }) {
   }
 
   if (error) {
-    return <><Header /><main className="message-page"><p className="eyebrow">404 / Not found</p><h1>This countdown has slipped away.</h1><p>{error}</p><a className="text-link" href="/">Create a new one <span>↗</span></a></main></>;
+    return <><Header theme={theme} onToggleTheme={onToggleTheme} /><main className="message-page"><p className="eyebrow">404 / Not found</p><h1>This countdown has slipped away.</h1><p>{error}</p><a className="text-link" href="/">Create a new one <span>↗</span></a></main></>;
   }
-  if (!countdown) return <><Header /><main className="message-page"><div className="loading-mark" /><p className="eyebrow">Loading your moment</p></main></>;
+  if (!countdown) return <><Header theme={theme} onToggleTheme={onToggleTheme} /><main className="message-page"><div className="loading-mark" /><p className="eyebrow">Loading your moment</p></main></>;
 
   return (
     <>
-      <Header />
+      <Header theme={theme} onToggleTheme={onToggleTheme} />
       <main className="share-shell" style={{ '--accent': countdown.themeAccent || DEFAULT_ACCENT }}>
         <div className="share-meta"><span className="live-dot" /> Live countdown <span className="slash">/</span> {new Date(countdown.targetDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div>
         <h1>{countdown.title}</h1>
@@ -178,5 +184,18 @@ function SharePage({ id }) {
 
 export default function App() {
   const id = getCountdownId();
-  return id ? <SharePage id={id} /> : <CreatePage />;
+  const [theme, setTheme] = useState(() => window.localStorage.getItem('time-until-theme') || 'light');
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem('time-until-theme', theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((currentTheme) => currentTheme === 'light' ? 'dark' : 'light');
+  }
+
+  return id
+    ? <SharePage id={id} theme={theme} onToggleTheme={toggleTheme} />
+    : <CreatePage theme={theme} onToggleTheme={toggleTheme} />;
 }
