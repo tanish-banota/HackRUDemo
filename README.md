@@ -1,30 +1,42 @@
 # Time Until
 
-A teaching template for a complete deployment pipeline with React/Vite, Node.js/Express, PostgreSQL, Docker, Render, and Vercel.
+A small countdown app for creating shareable timers for events, launches, deadlines, trips, or personal milestones. The project is built as a teaching example for a full-stack deployment flow using React, Vite, Express, PostgreSQL, Docker, Render, and Vercel.
 
 ## Architecture
 
-- `frontend/` - React + Vite client. Deploy to Vercel or serve with Nginx in Docker.
-- `backend/` - Express API and PostgreSQL access. Deploy as a Render web service.
-- `backend/db/schema.sql` - PostgreSQL schema and migration.
-- `docker-compose.yml` - Local PostgreSQL, API, and frontend development stack.
-- `render.yaml` - Render Blueprint for the API and managed PostgreSQL database.
+- `frontend/` — React + Vite client that creates and displays countdowns.
+- `backend/` — Express API with PostgreSQL access.
+- `backend/db/schema.sql` — database schema used to initialize the app database.
+- `docker-compose.yml` — local development stack for PostgreSQL, API, and frontend.
+- `render.yaml` — Render Blueprint for the API service and managed Postgres database.
+- `frontend/vercel.json` — rewrites `/c/:id` routes to the SPA entry file.
+
+## Features
+
+- Create a countdown with a title, target date/time, and optional accent color.
+- Share a countdown via a unique `/c/:id` URL.
+- View a live countdown with days, hours, minutes, and seconds.
+- Toggle light/dark theme and choose a custom accent color.
+- Final state shows a celebration panel when the target time is reached.
 
 ## Local development
 
 ### Prerequisites
 
-- Node.js 20 or newer
-- Docker Desktop with Docker Compose (for Option A)
-- PostgreSQL 16 or newer (for Option B)
+- Node.js 20+
+- Docker Desktop with Docker Compose (recommended)
+- PostgreSQL 16+ if you want to run services manually
 
-### Option A: run the full stack with Docker
+### Option A: run everything with Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-Open `http://localhost:5173`. The API is available at `http://localhost:4000`.
+Then open:
+
+- Frontend: http://localhost:5173
+- API: http://localhost:4000
 
 To stop the stack:
 
@@ -34,53 +46,98 @@ docker compose down
 
 ### Option B: run services individually
 
-1. Start PostgreSQL and apply `backend/db/schema.sql`.
-2. In `backend/`, install dependencies and set `DATABASE_URL` before starting the API:
+1. Start PostgreSQL and apply the schema:
 
-    ```bash
-    npm install
-    # PowerShell
-    $env:DATABASE_URL = "postgresql://USER:PASSWORD@localhost:5432/countdowns"
-    npm run dev
-    ```
+```bash
+createdb countdowns
+psql countdowns < backend/db/schema.sql
+```
 
-  Set `DATABASE_SSL=true` only when the database requires SSL. The API listens on port `4000` by default.
-3. In a second terminal, install and start the frontend:
+2. Start the backend:
 
-    ```bash
-    cd frontend
-    npm install
-    # PowerShell
-    $env:VITE_API_URL = "http://localhost:4000"
-    npm run dev
-    ```
+```bash
+cd backend
+npm install
+$env:DATABASE_URL = "postgresql://USER:PASSWORD@localhost:5432/countdowns"
+npm run dev
+```
 
-  `VITE_API_URL` is optional for local development because the frontend defaults to `http://localhost:4000`.
+Set `DATABASE_SSL=true` only if your database requires SSL.
 
-## Deployment teaching path
+3. Start the frontend in a second terminal:
 
-1. **Docker:** Build the backend with `docker build -f backend/Dockerfile .` and the frontend with `docker build --build-arg VITE_API_URL=https://YOUR-RENDER-SERVICE.onrender.com -f frontend/Dockerfile frontend`.
-2. **Render:** Deploy `render.yaml`. Render provisions PostgreSQL and injects `DATABASE_URL` into the API service. Replace the placeholder `CORS_ORIGIN` with the actual Vercel URL after the frontend is deployed.
-3. **Vercel:** Import `frontend/` as the project root and set `VITE_API_URL` to the deployed Render API URL, for example `https://time-until-api.onrender.com`.
-4. **Verify:** Open `https://YOUR-RENDER-SERVICE.onrender.com/api/health` and confirm it returns `{"status":"ok"}`. Then create a countdown from the Vercel site.
-5. **Share:** Send the generated `/c/:id` URL to anyone.
+```bash
+cd frontend
+npm install
+$env:VITE_API_URL = "http://localhost:4000"
+npm run dev
+```
 
-### Deployment checklist
+`VITE_API_URL` is optional locally because the frontend falls back to `http://localhost:4000` when it is not set.
 
-- Push the repository, including both `package-lock.json` files, to GitHub.
-- Create the Render Blueprint from `render.yaml` and wait for the database and API to deploy.
-- Copy the final Vercel production URL into Render's `CORS_ORIGIN` environment variable, then redeploy the API.
-- Set `VITE_API_URL` in Vercel for the Production environment and redeploy the frontend. Vite variables are embedded at build time.
-- Do not use a trailing slash in either URL.
-- Confirm the browser can create a countdown and open its `/c/:id` route.
+## Environment variables
+
+### Backend
+
+- `DATABASE_URL` — PostgreSQL connection string
+- `DATABASE_SSL` — set to `true` for managed/SSL-enabled databases
+- `PORT` — API port, defaults to `4000`
+- `CORS_ORIGIN` — comma-separated allowed origins, such as `https://your-app.vercel.app`
+
+### Frontend
+
+- `VITE_API_URL` — base URL for the Express API, used during build and runtime config
+
+## Deployment path
+
+1. Build and test locally with Docker Compose.
+2. Deploy the backend to Render using `render.yaml`.
+3. Set `CORS_ORIGIN` in Render to the production Vercel URL after the frontend is live.
+4. Deploy the frontend to Vercel and set `VITE_API_URL` to the deployed Render API URL.
+5. Open the shared `/c/:id` link to confirm the full flow works.
+
+### Render setup
+
+The project includes a Render Blueprint in `render.yaml`.
+
+- It provisions a managed PostgreSQL database.
+- It creates the API web service using the Dockerfile in `backend/Dockerfile`.
+- It injects `DATABASE_URL` automatically.
+- It sets `DATABASE_SSL` to `true` for Render-managed Postgres.
+
+### Vercel setup
+
+Import the `frontend/` folder as the app root in Vercel.
+
+Set the build-time environment variable:
+
+```bash
+VITE_API_URL=https://your-render-api-url.onrender.com
+```
+
+The frontend project includes a rewrite for `/c/:id` routes in `frontend/vercel.json`, so shared countdown pages work correctly after deployment.
 
 ## API
 
-- `GET /api/health` - health check.
-- `POST /api/countdowns` - create a countdown with `title`, `targetDate`, and optional `themeAccent`. Titles are limited to 255 characters; accent colors must be six-digit hex values.
-- `GET /api/countdowns/:id` - retrieve a countdown by its eight-character ID.
+### Health check
 
-Example request:
+```http
+GET /api/health
+```
+
+Returns:
+
+```json
+{ "status": "ok" }
+```
+
+### Create a countdown
+
+```http
+POST /api/countdowns
+```
+
+Body:
 
 ```json
 {
@@ -90,7 +147,13 @@ Example request:
 }
 ```
 
-Successful create and retrieve responses wrap the countdown in a `countdown` property:
+Validation rules:
+
+- `title` is required and must be 1–255 characters
+- `targetDate` must be a valid ISO timestamp
+- `themeAccent` is optional and must be a 6-digit hex color like `#f97316`
+
+Successful response:
 
 ```json
 {
@@ -104,4 +167,46 @@ Successful create and retrieve responses wrap the countdown in a `countdown` pro
 }
 ```
 
-The frontend uses `/c/:id` for shareable countdown pages. Missing countdowns return `404`; invalid input returns `400` with an `error` message.
+### Get one countdown
+
+```http
+GET /api/countdowns/:id
+```
+
+Returns the same countdown object wrapped in `countdown`.
+
+If the record is missing, the API returns `404`.
+If the request is invalid, it returns `400` with an `error` message.
+
+## Project scripts
+
+### Backend
+
+```bash
+cd backend
+npm install
+npm run dev
+npm run check
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+npm run build
+```
+
+## Deployment checklist
+
+- Push both `package-lock.json` files to GitHub.
+- Deploy the backend from `render.yaml` and wait for the database to initialize.
+- Update `CORS_ORIGIN` in Render to the final Vercel production URL.
+- Set `VITE_API_URL` in Vercel to the deployed Render API URL.
+- Do not include a trailing slash in either URL.
+- Verify that the app can create a countdown and open a shareable `/c/:id` page.
+
+## Notes
+
+This project is intentionally designed as a deployment teaching template. The frontend is intentionally simple and focused on the end-to-end flow rather than a complex app architecture.
